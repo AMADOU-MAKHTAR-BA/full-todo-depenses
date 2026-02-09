@@ -1,0 +1,68 @@
+import { Context } from "@oak/oak";
+import psql from "./dataBase.ts";
+
+// @desc get all depences
+// @route GET /depenses
+const getAllDepenses = async (ctx: Context) => {
+  const { response } = ctx;
+  try {
+    const depenses = await psql`SELECT * FROM depenses ORDER BY date DESC`;
+    response.status = 200;
+    response.type = "application/json";
+    response.body = depenses.map((depense) => ({
+      id: depense.id,
+      name: depense.name,
+      prix:
+        typeof depense.prix === "string"
+          ? parseFloat(depense.prix)
+          : depense.prix,
+      date: depense.date ? new Date(depense.date).toISOString() : null,
+    }));
+  } catch (error) {
+    console.error("GET /depenses error:", error);
+    response.status = 500;
+    response.body = {
+      error: error instanceof Error ? error.message : "Erreur",
+    };
+  }
+};
+
+// @desc insert new depenses in  depense
+// @route POST /depenses
+const addNewDepense = async (ctx: Context) => {
+  const { response } = ctx;
+  try {
+    const body = await ctx.request.body.json();
+    const { name, prix } = body;
+
+    if (!name || prix === null || prix === undefined) {
+      response.status = 400;
+      response.body = { error: "Nom et prix requis" };
+      return;
+    }
+
+    const result = await psql`
+      INSERT INTO depenses (name, prix)
+      VALUES (${name}, ${prix})
+      RETURNING id, name, prix, date
+    `;
+
+    const row = result[0];
+    response.status = 201;
+    response.type = "application/json";
+    response.body = {
+      id: row.id,
+      name: row.name,
+      prix: typeof row.prix === "string" ? parseFloat(row.prix) : row.prix,
+      date: row.date ? new Date(row.date).toISOString() : null,
+    };
+  } catch (error) {
+    console.error("POST /depenses error:", error);
+    response.status = 500;
+    response.body = {
+      error: error instanceof Error ? error.message : "Erreur serveur",
+    };
+  }
+};
+
+export { getAllDepenses, addNewDepense };
