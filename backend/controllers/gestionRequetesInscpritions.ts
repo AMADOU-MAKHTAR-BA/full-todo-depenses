@@ -11,7 +11,7 @@ const postInfoUser = async (ctx: Context) => {
       return;
     }
     const existUser = await psql`SELECT * FROM users WHERE email=${email}`;
-    if (existUser) {
+    if (existUser.length>0) {
       response.status = 409;
       response.body = "L'email fourni existe deja";
       return;
