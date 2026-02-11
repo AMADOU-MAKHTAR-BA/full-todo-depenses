@@ -7,11 +7,10 @@ import { oakCors } from "oakCors";
 
 const app = new Application();
 const port = 8000;
-
 // 📁 Chemin absolu vers le dossier dist (situé à la racine du projet)
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const distPath = join(__dirname, "..", "dist"); // on remonte d'un niveau depuis backend/
-
+console.log("🔍 distPath =", distPath);
 // 1️⃣ Servir les fichiers statiques (JS, CSS, images)
 app.use(async (ctx, next) => {
   try {
@@ -35,16 +34,37 @@ if (Deno.env.get("DENO_DEPLOYMENT_ID")) {
       origin: "http://localhost:5173",
       methods: ["GET", "POST", "OPTIONS"],
       credentials: true,
-    })
+    }),
   );
 }
 
 // 3️⃣ Logs des requêtes
 app.use(async (ctx, next) => {
-  console.log(`${new Date().toISOString()} - ${ctx.request.method} ${ctx.request.url}`);
+  console.log(
+    `${new Date().toISOString()} - ${ctx.request.method} ${ctx.request.url}`,
+  );
   await next();
 });
-
+// Forcer les bons MIME types pour les fichiers du build
+app.use(async (ctx, next) => {
+  const path = ctx.request.url.pathname;
+  if (path.endsWith(".js")) ctx.response.type = "application/javascript";
+  if (path.endsWith(".css")) ctx.response.type = "text/css";
+  if (path.endsWith(".svg")) ctx.response.type = "image/svg+xml";
+  if (path.endsWith(".png")) ctx.response.type = "image/png";
+  await next();
+});
+// Servir les fichiers avec les bons MIME types
+app.use(async (ctx, next) => {
+  const path = ctx.request.url.pathname;
+  if (path.startsWith("/assets/") && path.endsWith(".js")) {
+    ctx.response.type = "application/javascript";
+  }
+  if (path.startsWith("/assets/") && path.endsWith(".css")) {
+    ctx.response.type = "text/css";
+  }
+  await next();
+});
 // 4️⃣ Routes API
 app.use(router.routes());
 app.use(router.allowedMethods());
@@ -55,4 +75,4 @@ app.use(async (ctx) => {
 });
 
 console.log(`✅ Serveur prêt sur http://localhost:${port}`);
-await app.listen({ port });
+await app.listen({ port: 8000 });
