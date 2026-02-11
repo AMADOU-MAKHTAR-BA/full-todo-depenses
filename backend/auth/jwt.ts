@@ -1,18 +1,14 @@
-// Dans jwt.ts
 import { create, verify, getNumericDate, type Payload } from "@djwt/jwt";
-
 // Définir le type pour l'utilisateur
 export interface User {
   id: number;
   email: string;
 }
-
 // Définir le type pour le payload du token
 export interface TokenPayload extends Payload {
   user: User;
   exp: number;
 }
-
 // clé pour access token
 const accessKey = await crypto.subtle.importKey(
   "raw",
@@ -21,7 +17,6 @@ const accessKey = await crypto.subtle.importKey(
   false,
   ["sign", "verify"],
 );
-
 // clé pour refresh token
 const refreshKey = await crypto.subtle.importKey(
   "raw",
@@ -30,7 +25,6 @@ const refreshKey = await crypto.subtle.importKey(
   false,
   ["sign", "verify"],
 );
-
 // créer access token (court)
 export async function createAccessToken(user: User): Promise<string> {
   return await create(
