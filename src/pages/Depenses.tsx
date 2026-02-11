@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Desktop from "../components/Desktop.tsx";
 import Android from "../components/Android.tsx";
 import Form from "../components/Form.tsx";
 function Depenses() {
+  const navigate = useNavigate();
   const [dataDepense, setDataDepense] = useState<TypeDataDepense[]>([]);
   const [depenseInput, setDepenseInput] = useState<TypeDataDepense>({
     name: "",
@@ -10,25 +12,67 @@ function Depenses() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Dans un fichier api.ts ou directement dans Depenses.tsx
+  async function fetchWithAuth(url: string, options: RequestInit = {}) {
+    let response = await fetch(url, {
+      ...options,
+      credentials: "include",
+    });
+
+    // Si le token a expiré (401), essayer de le rafraîchir
+    if (response.status === 401) {
+      try {
+        const refreshResponse = await fetch(
+          "http://localhost:8000/api/refresh",
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        );
+
+        if (refreshResponse.ok) {
+          // Réessayer la requête originale
+          response = await fetch(url, {
+            ...options,
+            credentials: "include",
+          });
+        } else {
+          // Rediriger vers la connexion si le refresh échoue
+          globalThis.location.href = "/inscription";
+        }
+      } catch (error) {
+        globalThis.location.href = "/inscription";
+        console.error(error);
+      }
+    }
+
+    return response;
+  }
+
+  // Dans Depenses.tsx, modifions le useEffect :
   useEffect(() => {
-    console.log("useEffect exécuté");
-    fetch("http://localhost:8000/depenses")
+    fetch("http://localhost:8000/api/depenses", {
+      credentials: "include",
+    })
       .then((res) => {
-        console.log("Réponse reçue, statut:", res.status);
+        if (res.status === 401) {
+          // Token invalide ou expiré → redirection vers inscription
+          navigate("/inscription");
+          throw new Error("Non authentifié");
+        }
         if (!res.ok) {
           throw new Error(`Erreur HTTP: ${res.status}`);
         }
         return res.json();
       })
-      .then((data) => {
-        console.log("Données recues du serveur:", data);
-        setDataDepense(data);
-      })
+      .then((data) => setDataDepense(data))
       .catch((err) => {
-        console.error("Erreur fetch :", err);
-        setError(err.message);
+        if (err.message !== "Non authentifié") {
+          console.error(err);
+          setError(err.message);
+        }
       });
-  }, []);
+  }, [navigate]);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setDepenseInput((prev) => ({
@@ -40,26 +84,27 @@ function Depenses() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+
     if (!depenseInput.name.trim() || depenseInput.prix === null) {
       setError("Veuillez remplir tous les champs");
       return;
     }
+
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/depenses", {
+      const res = await fetchWithAuth("http://localhost:8000/api/depenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(depenseInput),
       });
-      console.log("Réponse serveur (POST) :", res.status);
+
       if (!res.ok) {
         const error = await res.json();
-        console.error("Erreur backend :", error);
         setError(error.error || "Erreur lors de l'ajout");
         return;
       }
+
       const newDepense = await res.json();
-      console.log("Nouvelle dépense ajoutée:", newDepense);
       setDataDepense((prev) => [newDepense, ...prev]);
       setDepenseInput({ name: "", prix: null });
     } catch (err) {

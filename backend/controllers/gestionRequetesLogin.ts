@@ -1,45 +1,42 @@
 import { Context } from "@oak/oak";
 import psql from "../database/dataBase.ts";
+import { verifyPassword } from "../auth/hashage.ts";
 import { createAccessToken, createRefreshToken } from "../auth/jwt.ts";
-import { hashPassword } from "../auth/hashage.ts";
 
-const postInfoUser = async (ctx: Context) => {
-  const { response, request } = ctx;
+const postLoginData = async (ctx: Context) => {
+  const { request, response } = ctx;
 
   try {
     const body = await request.body.json();
-    const { nom, prenom, email, password } = body;
+    const { email, password } = body;
 
-    if (
-      !nom?.trim() ||
-      !prenom?.trim() ||
-      !email?.trim() ||
-      !password?.trim()
-    ) {
+    if (!email?.trim() || !password?.trim()) {
       response.status = 400;
-      response.body = "Tous les champs sont requis";
+      response.body = "Tous les champs doivent être remplis";
       return;
     }
-
-    const existUser = await psql`
-      SELECT id FROM users WHERE email=${email}
-    `;
-
-    if (existUser.length > 0) {
-      response.status = 409;
-      response.body = "Email déjà utilisé";
-      return;
-    }
-
-    const hashedPassword = await hashPassword(password);
 
     const result = await psql`
-      INSERT INTO users (nom, prenom, email, hashed_password)
-      VALUES (${nom}, ${prenom}, ${email}, ${hashedPassword})
-      RETURNING id, email
+      SELECT id, email, hashed_password
+      FROM users
+      WHERE email = ${email}
     `;
 
+    if (result.length === 0) {
+      response.status = 404;
+      response.body = "Aucun compte correspondant";
+      return;
+    }
+
     const user = result[0];
+
+    const isValid = await verifyPassword(password, user.hashed_password);
+
+    if (!isValid) {
+      response.status = 403;
+      response.body = "Mot de passe incorrect";
+      return;
+    }
 
     const accessToken = await createAccessToken({
       id: user.id,
@@ -61,7 +58,7 @@ const postInfoUser = async (ctx: Context) => {
       httpOnly: true,
       sameSite: "lax",
       secure: false,
-      maxAge: 60 * 5,
+      maxAge: 60 * 5, 
       path: "/",
     });
 
@@ -79,8 +76,6 @@ const postInfoUser = async (ctx: Context) => {
       user: {
         id: user.id,
         email: user.email,
-        nom:user.nom,
-        prenom:user.prenom
       },
     };
   } catch (error) {
@@ -90,4 +85,4 @@ const postInfoUser = async (ctx: Context) => {
   }
 };
 
-export { postInfoUser };
+export { postLoginData };

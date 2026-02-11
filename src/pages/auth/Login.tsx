@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 import Error from "../../components/Error.tsx";
@@ -39,7 +39,7 @@ function Connexion() {
 
   const passwordErrors = validatePassword(formConnexionData.password);
   const isPasswordValid = passwordErrors.length === 0;
-
+  const navigate = useNavigate();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormConnexionData((prev) => ({
@@ -51,13 +51,18 @@ function Connexion() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!formConnexionData.email.trim() || !formConnexionData.password.trim() || !isPasswordValid) {
+    if (
+      !formConnexionData.email.trim() ||
+      !formConnexionData.password.trim() ||
+      !isPasswordValid
+    ) {
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/connexion", {
+      const res = await fetch("http://localhost:8000/api/login", {
         method: "POST",
+        credentials: "include", // 🔥
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formConnexionData),
       });
@@ -67,9 +72,14 @@ function Connexion() {
         console.error("Erreur backend :", error);
         return;
       }
+      const data = await res.json();
+      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=300`;
 
+      setFormConnexionData({ email: "", password: "" });
       console.table([formConnexionData]);
       // ici tu peux rediriger ou afficher un message
+      console.log("Connexion reussi avec success")
+      navigate("/");
     } catch (err) {
       console.error("Erreur réseau :", err);
     }
@@ -108,25 +118,36 @@ function Connexion() {
             />
 
             <div className="mt-2 flex items-center gap-2 cursor-pointer select-none text-sm opacity-80 hover:opacity-100">
-              <input title="input"
+              <input
+                title="input"
                 id="togglePassword"
                 type="checkbox"
                 className="checkbox checkbox-sm checkbox-primary w-6 h-6"
                 checked={voirMotDePasse}
                 onChange={(e) => setVoirMotDePasse(e.target.checked)}
               />
-              <span>{voirMotDePasse ? "🙈 Masquer" : "👁️ Afficher"} le mot de passe</span>
+              <span>
+                {voirMotDePasse ? "🙈 Masquer" : "👁️ Afficher"} le mot de passe
+              </span>
             </div>
 
             <p className="w-full text-center text-lg text-blue-500 mt-3">
               Le mot de passe doit contenir :
             </p>
             <div className="flex flex-col mt-1 w-[75%] justify-center items-center">
-              <Error ok={!passwordErrors.includes("minLength")}>Au moins 8 caractères</Error>
-              <Error ok={!passwordErrors.includes("lowercase")}>Une lettre minuscule</Error>
-              <Error ok={!passwordErrors.includes("uppercase")}>Une lettre majuscule</Error>
+              <Error ok={!passwordErrors.includes("minLength")}>
+                Au moins 8 caractères
+              </Error>
+              <Error ok={!passwordErrors.includes("lowercase")}>
+                Une lettre minuscule
+              </Error>
+              <Error ok={!passwordErrors.includes("uppercase")}>
+                Une lettre majuscule
+              </Error>
               <Error ok={!passwordErrors.includes("digit")}>Un chiffre</Error>
-              <Error ok={!passwordErrors.includes("special")}>Un caractère spécial</Error>
+              <Error ok={!passwordErrors.includes("special")}>
+                Un caractère spécial
+              </Error>
             </div>
           </div>
 

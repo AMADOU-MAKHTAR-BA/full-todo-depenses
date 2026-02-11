@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@felix/bcrypt": "jsr:@felix/bcrypt@^1.0.8",
     "@oak/oak": "jsr:@oak/oak@^17.2.0",
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "oakCors": "https://deno.land/x/cors@v1.2.2/mod.ts",

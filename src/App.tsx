@@ -3,16 +3,15 @@ import LayoutPage from "./pages/LayoutPage.tsx";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Login from "./pages/auth/Login.tsx";
 import Inscription from "./pages/auth/Inscription.tsx";
-import DepensesGuard from './components/DepensesGuard.tsx'
 const App = () => {
   const myRouter = createBrowserRouter([
     {
       path: "/",
       element: <LayoutPage />,
       children: [
-        { index: true, element: <DepensesGuard>
+        { index: true, element: 
            <Depenses />
-        </DepensesGuard> },
+         },
         { path: "/login", element: <Login /> },
         { path: "/inscription", element: <Inscription /> },
       ],

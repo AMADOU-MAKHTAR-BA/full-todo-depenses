@@ -1,21 +1,31 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-type TypeChildren = {
-  children: ReactNode;
-};
+type Props = { children: ReactNode };
 
-export default function AuthHooks({ children }: TypeChildren) {
+
+// petit util pour lire le cookie
+function getTokenFromCookie(): string | null {
+  const match = document.cookie.match(new RegExp('(^| )accessToken=([^;]+)'));
+  if (match) return match[2];
+  return null;
+}
+
+
+  function AuthHooks({ children }: Props) {
   const navigate = useNavigate();
-  const testAuth = false;
 
   useEffect(() => {
-    if (!testAuth) {
-      navigate("/inscription");
+    const token = getTokenFromCookie();
+    if (!token) {
+      navigate("/inscription"); // pas de token → redirection
     }
-  }, [testAuth, navigate]);
+  }, [navigate]);
 
-  if (!testAuth) return null;
+  const token = getTokenFromCookie();
+  if (!token) return null; // on n'affiche rien si pas connecté
 
   return <>{children}</>;
 }
+
+export { getTokenFromCookie , AuthHooks}

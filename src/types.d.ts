@@ -16,5 +16,11 @@ interface TypeFormProps {
   loading: boolean;
   depensePrix: null | number;
 }
+interface TypeUsers{
+  nom:string;
+  prenom:string;
+  email:string;
+  password:string
+}
 }
 export {};

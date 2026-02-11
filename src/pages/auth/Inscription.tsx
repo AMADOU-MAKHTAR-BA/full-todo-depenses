@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Error from "../../components/Error.tsx";
 
@@ -41,7 +41,7 @@ function Inscription() {
 
   const passwordErrors = validatePassword(formConnexiondata.password);
   const isPasswordValid = passwordErrors.length === 0;
-
+  const navigate = useNavigate();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormconnexionData((prev) => ({ ...prev, [name]: value }));
@@ -61,6 +61,7 @@ function Inscription() {
     try {
       const res = await fetch("http://localhost:8000/api/inscription", {
         method: "POST",
+        credentials: "include", // 🔥
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formConnexiondata),
       });
@@ -70,7 +71,15 @@ function Inscription() {
         console.error("Erreur backend :", error);
         return;
       }
-
+       const data = await res.json();
+      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=300`;
+      setFormconnexionData({
+        nom: "",
+        prenom: "",
+        email: "",
+        password: "",
+      });
+      navigate("/");
       console.log("Inscription réussie ✅");
     } catch (err) {
       console.error("Erreur réseau :", err);
