@@ -14,8 +14,6 @@ router.get("/api/depenses", auth, getAllDepenses);
 router.post("/api/depenses", auth, addNewDepense);
 
 router.post("/api/depenses", refreshAccessToken);
-
-
 router.post("/api/inscription", postInfoUser);
 router.post("/api/login", postLoginData);
 export default router;

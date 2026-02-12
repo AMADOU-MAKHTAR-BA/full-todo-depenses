@@ -50,7 +50,7 @@ async function auth(ctx: Context, next: () => Promise<unknown>) {
     ctx.cookies.set("accessToken", newAccessToken, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: true,
       maxAge: 300, // 5 minutes
       path: "/",
     });

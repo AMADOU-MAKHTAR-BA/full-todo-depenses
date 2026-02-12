@@ -60,7 +60,7 @@ const postInfoUser = async (ctx: Context) => {
     ctx.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: true,
       maxAge: 60 * 5,
       path: "/",
     });
@@ -68,7 +68,7 @@ const postInfoUser = async (ctx: Context) => {
     ctx.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: true,
       maxAge: 60 * 60 * 24 * 7, // 7 jours
       path: "/",
     });

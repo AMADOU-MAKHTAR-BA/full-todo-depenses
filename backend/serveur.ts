@@ -1,34 +1,71 @@
 import "@std/dotenv/load";
 import { Application } from "@oak/oak/application";
-import { send } from "@oak/oak/send";
+import { Router } from "@oak/oak/router";
 import { dirname, fromFileUrl, join } from "@std/path";
-import router from "./router.ts";
 import { oakCors } from "oakCors";
+import router from "./router.ts";
+import { Context } from "@oak/oak";
 
 const app = new Application();
 const port = 8000;
-// 📁 Chemin absolu vers le dossier dist (situé à la racine du projet)
-const __dirname = dirname(fromFileUrl(import.meta.url));
-const distPath = join(__dirname, "..", "dist"); // on remonte d'un niveau depuis backend/
-console.log("🔍 distPath =", distPath);
-// 1️⃣ Servir les fichiers statiques (JS, CSS, images)
-app.use(async (ctx, next) => {
-  try {
-    await send(ctx, ctx.request.url.pathname, {
-      root: distPath,
-      index: "index.html",
-    });
-  } catch {
-    await next(); // ce n’est pas un fichier statique → passe aux routes suivantes
-  }
-});
 
-// 2️⃣ CORS – en production, les appels sont en same-origin, tu peux désactiver ou restreindre
-if (Deno.env.get("DENO_DEPLOYMENT_ID")) {
-  // Mode production (Deno Deploy) → pas de CORS si front/back servis ensemble
-  console.log("Production mode: CORS disabled (same-origin)");
-} else {
-  // Développement local → CORS vers le front Vite
+// 📁 Chemin absolu vers dist (racine du projet)
+const __dirname = dirname(fromFileUrl(import.meta.url));
+const distPath = join(__dirname, "..", "dist");
+console.log("🔍 distPath =", distPath);
+
+// -------------------------------------------------------------
+// 1. SERVIR LES FICHIERS STATIQUES (avec MIME types forcés)
+// -------------------------------------------------------------
+const staticRouter = new Router();
+
+try {
+  // Vérifie que le dossier existe
+  await Deno.stat(distPath);
+  console.log("✅ Dossier dist trouvé");
+
+  // Parcours récursif simple (racine + assets)
+  for await (const entry of Deno.readDir(distPath)) {
+    const fullPath = join(distPath, entry.name);
+    if (entry.isFile) {
+      staticRouter.get(`/${entry.name}`, async (ctx) => {
+        const content = await Deno.readFile(fullPath);
+        ctx.response.body = content;
+        setMimeType(ctx, entry.name);
+      });
+    } else if (entry.isDirectory && entry.name === "assets") {
+      const assetsPath = join(distPath, "assets");
+      for await (const asset of Deno.readDir(assetsPath)) {
+        if (asset.isFile) {
+          staticRouter.get(`/assets/${asset.name}`, async (ctx) => {
+            const content = await Deno.readFile(join(assetsPath, asset.name));
+            ctx.response.body = content;
+            setMimeType(ctx, asset.name);
+          });
+        }
+      }
+    }
+  }
+} catch (error) {
+  console.error("❌ Erreur accès au dossier dist:", error);
+}
+
+function setMimeType(ctx: Context, filename: string) {
+  if (filename.endsWith(".js")) ctx.response.type = "application/javascript";
+  else if (filename.endsWith(".css")) ctx.response.type = "text/css";
+  else if (filename.endsWith(".svg")) ctx.response.type = "image/svg+xml";
+  else if (filename.endsWith(".png")) ctx.response.type = "image/png";
+  else if (filename.endsWith(".html")) ctx.response.type = "text/html";
+  else if (filename.endsWith(".json")) ctx.response.type = "application/json";
+}
+
+app.use(staticRouter.routes());
+app.use(staticRouter.allowedMethods());
+
+// -------------------------------------------------------------
+// 2. CORS (uniquement local)
+// -------------------------------------------------------------
+if (!Deno.env.get("DENO_DEPLOYMENT_ID")) {
   app.use(
     oakCors({
       origin: "http://localhost:5173",
@@ -38,41 +75,39 @@ if (Deno.env.get("DENO_DEPLOYMENT_ID")) {
   );
 }
 
-// 3️⃣ Logs des requêtes
+// -------------------------------------------------------------
+// 3. LOGS
+// -------------------------------------------------------------
 app.use(async (ctx, next) => {
   console.log(
-    `${new Date().toISOString()} - ${ctx.request.method} ${ctx.request.url}`,
+    `${new Date().toISOString()} - ${ctx.request.method} ${ctx.request.url.pathname}`,
   );
   await next();
 });
-// Forcer les bons MIME types pour les fichiers du build
-app.use(async (ctx, next) => {
-  const path = ctx.request.url.pathname;
-  if (path.endsWith(".js")) ctx.response.type = "application/javascript";
-  if (path.endsWith(".css")) ctx.response.type = "text/css";
-  if (path.endsWith(".svg")) ctx.response.type = "image/svg+xml";
-  if (path.endsWith(".png")) ctx.response.type = "image/png";
-  await next();
-});
-// Servir les fichiers avec les bons MIME types
-app.use(async (ctx, next) => {
-  const path = ctx.request.url.pathname;
-  if (path.startsWith("/assets/") && path.endsWith(".js")) {
-    ctx.response.type = "application/javascript";
-  }
-  if (path.startsWith("/assets/") && path.endsWith(".css")) {
-    ctx.response.type = "text/css";
-  }
-  await next();
-});
-// 4️⃣ Routes API
+
+// -------------------------------------------------------------
+// 4. ROUTES API
+// -------------------------------------------------------------
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-// 5️⃣ Fallback SPA : toutes les autres routes → index.html (pour React Router)
+// -------------------------------------------------------------
+// 5. FALLBACK SPA (toutes les autres routes → index.html)
+// -------------------------------------------------------------
 app.use(async (ctx) => {
-  await send(ctx, "/index.html", { root: distPath });
+  try {
+    const indexPath = join(distPath, "index.html");
+    const content = await Deno.readFile(indexPath);
+    ctx.response.type = "text/html";
+    ctx.response.body = content;
+  } catch {
+    ctx.response.status = 404;
+    ctx.response.body = "Not Found";
+  }
 });
 
+// -------------------------------------------------------------
+// DÉMARRAGE
+// -------------------------------------------------------------
 console.log(`✅ Serveur prêt sur http://localhost:${port}`);
-await app.listen({ port: 8000 });
+await app.listen({ port });

@@ -38,7 +38,7 @@ const refreshAccessToken = async (ctx: Context) => {
     ctx.cookies.set("accessToken", newAccessToken, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: true,
       maxAge: 300,
       path: "/",
     });
