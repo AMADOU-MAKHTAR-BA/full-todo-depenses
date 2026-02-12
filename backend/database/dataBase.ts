@@ -6,4 +6,4 @@ if (!DATABASE_URL) {
 }
 
 const psql = postgres(DATABASE_URL);
-export default psql;
+export default psql; 
