@@ -60,7 +60,7 @@ function Connexion() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/login", {
+      const res = await fetch("/api/login", {
         method: "POST",
         credentials: "include", // 🔥
         headers: { "Content-Type": "application/json" },

@@ -51,7 +51,7 @@ function Depenses() {
 
   // Dans Depenses.tsx, modifions le useEffect :
   useEffect(() => {
-    fetch("http://localhost:8000/api/depenses", {
+    fetch("/api/depenses", {
       credentials: "include",
     })
       .then((res) => {
@@ -92,7 +92,7 @@ function Depenses() {
 
     setLoading(true);
     try {
-      const res = await fetchWithAuth("http://localhost:8000/api/depenses", {
+      const res = await fetchWithAuth("/api/depenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(depenseInput),
